@@ -1,0 +1,22 @@
+.reveal .title {
+    font-size: 60px !important;
+}
+
+.reveal h1, h2 {
+    font-size: 60px !important;
+    color: rgb(0, 78, 159) !important;
+}
+
+.reveal .slide-logo {
+    height: 8vh !important;
+    max-width: unset !important;
+    max-height: unset !important;
+}
+
+.reveal .progress, .citation a {
+    color: rgb(0, 78, 159);
+}
+
+.reveal .quarto-title-block > .title {
+    margin-top: 300px !important;
+}

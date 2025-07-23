@@ -1,0 +1,69 @@
+# Format of blocks:
+# NUM DUR RF  GX  GY  GZ  ADC  EXT
+[BLOCKS]
+1   1621  1  0  0  1  0  0
+2    319  2  0  0  2  0  0
+3   2245  0  4  5  3  1  0
+4    104  0  7  8  6  0  0
+
+# Format of RF events:
+# id amplitude mag_id phase_id time_shape_id delay freq phase
+# ..        Hz   ....     ....          ....    us   Hz   rad
+[RF]
+1      129.712 1 2 0 100 -424.504 0
+2      329.152 3 4 0 100 0 0
+
+# Format of arbitrary gradients:
+#   time_shape_id of 0 means default timing (stepping with grad_raster starting at 1/2 of grad_raster)
+# id amplitude amp_shape_id time_shape_id delay
+# ..      Hz/m       ..         ..          us
+[GRADIENTS]
+4      -773910 5 0 790
+5       771376 6 0 790
+7      -773910 7 8 0
+8        32610 7 8 0
+
+# Format of trapezoid gradients:
+# id amplitude rise flat fall delay
+# ..      Hz/m   us   us   us    us
+[TRAP]
+ 1  1.27714e+06 250 7580 250 8130
+ 2       444444  90 3000  90  10
+ 3  -1.2716e+06 250  290 250   0
+ 6  1.26582e+06 250  540 250   0
+
+# Format of ADC events:
+# id num dwell delay freq phase
+# ..  ..    ns    us   Hz   rad
+[ADC]
+1 12000 1700 790 0 0
+
+# Sequence Shapes
+[SHAPES]
+
+shape_id 1
+num_samples 8000
+0.00011671692
+0.000117246598
+0.000117778547
+0.000118312775
+...
+0.0422751249
+
+shape_id 7
+num_samples 2
+1
+0
+
+shape_id 8
+num_samples 2
+0
+104
+
+
+[SIGNATURE]
+# This is the hash of the Pulseq file, calculated right before the [SIGNATURE] section was added
+# It can be reproduced/verified with md5sum if the file trimmed to the position right above [SIGNATURE]
+# The new line character preceding [SIGNATURE] BELONGS to the signature (and needs to be sripped away for recalculating/verification)
+Type md5
+Hash efc5eb7dbaa82aba627a31ff689c8649

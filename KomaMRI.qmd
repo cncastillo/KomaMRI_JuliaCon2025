@@ -1,0 +1,554 @@
+---
+title: "What's new with KomaMRI.jl"
+author: "Carlos Castillo Passi"
+date: 23 July 2025
+toc: false
+toc-depth: 1
+toc-title: "Outline"
+resource-path:
+  - ../../Other/           # MyLibrary.bib
+  - ../../Other/Templates/ # MRM-AMA.csl
+format:
+    revealjs:
+      date-format: "DD MMM YYYY"
+      logo: KomaMRI_files/figures/Stanford_logo.png
+      css: KomaMRI_files/styles/style.css
+      bibliography: MyLibrary.bib
+      csl: MRM-AMA.csl
+      menu: true
+      slide-number: c/t
+      auto-play-media: true
+      self-contained: true
+      # controls: true
+title-slide-attributes:
+  data-background-image: KomaMRI_files/figures/ThesisCover.svg
+  data-background-position: top
+engine: julia
+code-line-numbers: false
+highlight-style: github-dark
+filters:
+   - include-code-files
+footer: "JuliaCon 2025 - What's new with KomaMRI.jl"
+execute-dir: project
+julia:
+  exeflags: 
+    - "--project=@."
+  
+---
+
+# Why simulate MRI?
+
+## MRI has a few challenges
+:::{.incremental}
+- MRI physics are complex and solutions often **non-intuitive** → teaching.
+- MRI scans are **costly** → slow feedback loops in pulse sequence design.
+- **Sharing** MRI data is **complicated**:
+  - Ethics
+  - Patient privacy issues
+  - No large datasets are available (FastMRI ~9,012)
+:::
+
+## What are others doing?
+
+MRI, like robotics, has **high trial and error cost**:
+
+:::{.columns}
+::: {.column width="50%"}
+![](KomaMRI_files/figures/Robotics1.png)
+:::
+::: {.column width="50%"}
+![](KomaMRI_files/figures/Robotics2.jpg)
+:::
+:::
+
+Can we create a digital playground to answer:
+
+> How can we get **faster** and **more useful** images?
+
+## Optimization of **low-field** cardiac MRI sequence[@castillo-passi_highly_2025]
+
+:::{.columns}
+::: {.column width="50%" .fragment}
+![](KomaMRI_files/figures/CMRAEarlyLowField.png)
+:::
+::: {.column width="50%" .fragment}
+![](KomaMRI_files/figures/CMRA_1_5mm3_MC.mp4){loop="true" width="90%"}
+:::
+:::
+
+## Comparison between optimized sequence and 1.5T
+![](KomaMRI_files/figures/CMRA055Tvs15T.svg)
+
+Study in collaboration with Anastasia Fotaki, KCL. To be submitted.
+
+## Get quantitative information from signal dictionaries
+:::{.columns}
+::: {.column width="50%"}
+![](KomaMRI_files/figures/HV1_T1_MC_16bins.gif){loop="true" width="70%" fig-align="center"}
+:::
+::: {.column width="50%"}
+![](KomaMRI_files/figures/HV1_T2_MC_16bins.gif){loop="true" width="70%" fig-align="center"}
+:::
+:::
+Free-running T1 and T2 mapping at 0.55T by Diego Pedraza, UC. To be submitted.
+
+# What are we simulating?
+
+## The Bloch equations
+Describe the evolution of the magnetization:
+$$
+\frac{\mathrm{d}\vec{M}}{\mathrm{d}t} = \gamma \vec{M} \times \vec{B}(t) - \left(
+\frac{M_x}{T_2},
+\frac{M_y}{T_2},
+\frac{M_z - M_0}{T_1}
+\right)
+$$
+
+- $\vec{M}$ is the **measurement**, 
+- $\vec{B}(t)$ is what we control with the **pulse sequence**, 
+- $(M_0, T_1, T_2)$ are **tissue properties**.
+
+
+## This equation is not really special, it is just an ODE
+
+$$
+\Large \frac{\mathrm{d}\vec{M}}{\mathrm{d}t} = \mathrm{bloch}(t, \vec{M})
+$$
+
+## … but this part makes it special!
+
+![](KomaMRI_files/figures/2DBloch.png){fig-align="center" width="90%"}
+
+How can we solve this for 10,000 spins? 
+
+(100x100)
+
+## The number of ODEs explodes quite rapidly
+
+![](KomaMRI_files/figures/3DBloch.png){fig-align="center" width="90%"}
+
+How can we solve this for 100,000,000 spins?
+
+(460x460x460)
+
+<!-- HOW ARE WE SIMULATING IT -->
+# How are we simulating it?
+
+## Operator-splitting method
+
+:::{.columns}
+::: {.column width="45%"}
+![](KomaMRI_files/figures/RF.svg){fig-align="center" width="100%"}
+:::
+::: {.column width="55%"}
+- Continuous problem ($t$):
+$$
+\begin{align*}
+\vec{M}_t &= ({{\color{red}A}} + {{\color{blue}B}})\vec{M}\\
+\vec{m}_t &= {{\color{red}A}} \vec{m}\\
+\vec{m}_t &= {{\color{blue}B}} \vec{m}\\
+\end{align*}
+$$
+- Discrete problem ($t_n \rightarrow t_{n+1}$):
+$$
+\begin{align*}
+\vec{m}^{n+1} &= \mathrm{e}^{{\mathrm{\color{red}A}} \Delta t} \vec{m}^{n}\\
+\vec{m}^{n+1} &= \mathrm{e}^{{\mathrm{\color{blue}B}} \Delta t} \vec{m}^{n}\\
+\vec{M}^{n+1} &= \mathrm{e}^{{\mathrm{\color{red}A}} \Delta t} \mathrm{e}^{\vec{\mathrm{\color{blue}B}} \Delta t} \vec{M}^{n}
+\end{align*}
+$$
+:::
+:::
+
+## KomaMRI.jl[@castillo-passi_komamri_2023]
+![](KomaMRI_files/figures/koma-schematic.svg)
+
+- Pulseq[@layton_pulseq_2017] as sequence definition.
+- MRD[@inati_ismrm_2017] (previously ISMRMRD) as raw data format.
+
+## The Julia programming language[@bezanson_julia_2017]
+
+:::{.columns}
+::: {.column width="70%"}
+- Similar syntax to MATLAB (commonly used in MRI community)
+- Multi-threading support
+- Excellent GPU support[@besard_rapid_2019; @besard_effective_2019]
+- GUI support (PlotlyJS.jl and Blink.jl)
+:::
+::: {.column width="30%"}
+![](KomaMRI_files/figures/Julia.png)
+:::
+:::
+
+## Graphical User Interface (GUI)
+![](KomaMRI_files/figures/ui-simulation.gif){fig-align="center"}
+
+Results can be exported to `.mat`.
+
+## GPU parallelization
+![](KomaMRI_files/figures/ParalelSpins.svg)
+
+## Compatible with Pulseq[@layton_pulseq_2017]
+```julia
+seq = read_seq("spiral_3T.seq")
+plot_seq(seq)
+```
+```{julia}
+using KomaMRI
+seq = read_seq("KomaMRI_files/spiral.seq");
+p = plot_seq(seq; height=500)
+savefig(p, "KomaMRI_files/figures/spiral.html")
+nothing
+```
+:::{.columns}
+::: {.column width="50%"}
+
+```{.python include="KomaMRI_files/spiral_snippet.seq"}
+```
+:::
+::: {.column width="50%"}
+```{=html}
+<iframe src="KomaMRI_files/figures/spiral.html" width="100%" height="520px"></iframe>
+```
+:::
+:::
+
+## Koma achieved excellent accuracy for all tested cases
+![](KomaMRI_files/figures/Comparison_JEMRIS.svg){fig-align="center"}
+
+## Koma was significantly faster than MRiLab
+|                | **CPU**                | **GPU1**              | **GPU2**              |
+|----------------|------------------------|-----------------------|-----------------------|
+| **Name**       | **Intel i7-1165G7**    | **GTX 1650 Ti**       | **RTX 2080 Ti**       |
+| **JEMRIS**     | $\approx7\,\mathrm{min}$ | -                     | -                     |
+| **MRiLab**     | $1.56\,\mathrm{s} \pm 0.07\,\mathrm{s}$ | $0.84\,\mathrm{s} \pm 0.02\,\mathrm{s}$   | $0.91\,\mathrm{s} \pm 0.02\,\mathrm{s}$   |
+| **Koma**       | $1.82\,\mathrm{s} \pm 0.17\,\mathrm{s}$    | $0.32\,\mathrm{s} \pm 0.02\,\mathrm{s}$ | $0.15\,\mathrm{s} \pm 0.01\,\mathrm{s}$ |
+
+<!-- WHAT'S NEW -->
+# What's new in KomaMRI.jl?
+
+## Package separation (Boris Oróstica)
+
+![](KomaMRI_files/figures/koma-schema-subdirs.svg)
+
+## Sub-packages have their own CI
+
+![](KomaMRI_files/figures/SubpackageCI.png){fig-align="center"}
+
+- **KomaMRIBase**: Custom types and functions
+- **KomaMRICore**: Simulation functions
+- **KomaMRIFiles**: File I/O functions
+- **KomaMRIPlots**: Plotting functions
+- **KomaMRI**: User Interface
+
+## Enhanced GPU support (Ryan Kierulf)
+
+![](KomaMRI_files/figures/BuildkiteKoma.png){fig-align="center"}
+
+:::{.panel-tabset}
+## CPU
+```julia
+using KomaMRI
+obj = brain_phantom2D()
+seq = PulseDesigner.EPI_example()
+sys = Scanner()
+raw = simulate(obj, seq, sys)
+```
+## NVIDIA
+```julia
+using KomaMRI, CUDA # Loads KomaMRICoreCUDAExt
+obj = brain_phantom2D()
+seq = PulseDesigner.EPI_example()
+sys = Scanner()
+raw = simulate(obj, seq, sys)
+```
+## AMD
+```julia
+using KomaMRI, AMDGPU # Loads KomaMRICoreAMDGPUExt
+obj = brain_phantom2D()
+seq = PulseDesigner.EPI_example()
+sys = Scanner()
+raw = simulate(obj, seq, sys)
+```
+## Apple silicon
+```julia
+using KomaMRI, Metal # Loads KomaMRICoreMetalExt
+obj = brain_phantom2D()
+seq = PulseDesigner.EPI_example()
+sys = Scanner()
+raw = simulate(obj, seq, sys)
+```
+## Intel
+```julia
+using KomaMRI, oneAPI # Loads KomaMRICoreoneAPIExt
+obj = brain_phantom2D()
+seq = PulseDesigner.EPI_example()
+sys = Scanner()
+raw = simulate(obj, seq, sys)
+```
+:::
+
+## Buildkite CI and benchmark setup
+
+![](KomaMRI_files/figures/BuildkiteCI.png){fig-align="center"}
+
+![](KomaMRI_files/figures/BuildkiteBenchmarks.png){fig-align="center" width="65%"}
+
+## Kernel-based GPU programming
+We achieved **performance improvements** and **memory reductions**.
+
+![](KomaMRI_files/figures/KernelBasedGPU.png){fig-align="center"}
+
+
+## Distributed computing
+Koma is compatible with HPC and SLURM pipelines:
+
+:::{.panel-tabset}
+## Diagram
+![](KomaMRI_files/figures/KomamultiGPU.svg){fig-align="center" width="90%"}
+
+## Julia
+```julia
+using Distributed, CUDA
+addprocs(length(devices())) # One process per GPU
+@everywhere begin
+    using KomaMRI, CUDA
+    sys = Scanner()
+    seq = PulseDesigner.EPI_example()
+    obj = brain_phantom2D()
+    parts = kfoldperm(length(obj), nworkers()) # [1:10, 11:20, 21:30]
+end
+# Simulation
+raw = @distributed (+) for i=1:nworkers()
+    KomaMRICore.set_device!(i-1) #Sets device for this worker
+    simulate(obj[parts[i]], seq, sys)
+end
+```
+## SLURM
+```bash
+#!/bin/bash
+#SBATCH --job-name KomaDistributed                 # Job name
+#SBATCH -t 0-00:30                                 # Max runtime for job
+#SBATCH -p batch                                   # Enter partition on which to run the job
+#SBATCH --ntasks=1                                 # 1 task
+#SBATCH --cpus-per-task=1                          # Request 1 CPU
+#SBATCH --gpus=4                                   # Request 4 GPUs
+#SBATCH -o /mnt/workspace/%u/slurm-out/%test.out   # Enter file path to write stdout to
+#SBATCH -e /mnt/workspace/%u/slurm-out/%test.err   # Enter file path to write stderr to
+
+module load julia/1.10.2
+julia script.jl
+```
+:::
+
+## New motion models (Pablo Villacorta)
+
+![](KomaMRI_files/figures/GUI_aorta.mp4){fig-align="center" width="90%" loop="true"}
+
+## Phantoms with composable `Motion`'s
+::: {.columns}
+::: {.column width="40%"}
+```julia
+obj.motion = MotionList(
+  Translate(# Translation 1
+    1.0e-2, # x-displacement
+    0.0,    # y-displacement
+    0.0,    # z-displacement
+    TimeRange(0.0, 1.0), 
+    AllSpins()
+  ),
+  Translate(# Translation 2
+    0.0,    # x-displacement
+    1.0e-2, # y-displacement
+    0.0,    # z-displacement
+    TimeRange(1.0, 2.0), 
+    AllSpins()
+  ),
+)
+```
+:::
+::: {.column width="60%"}
+```{julia}
+obj = brain_phantom2D()
+obj.motion = MotionList(
+  Translate(# Translation 1
+    1.0e-2, # x-displacement
+    0.0,    # y-displacement
+    0.0,    # z-displacement
+    TimeRange(0.0, 1.0), 
+    AllSpins()
+  ),
+  Translate(# Translation 2
+    0.0,    # x-displacement
+    1.0e-2, # y-displacement
+    0.0,    # z-displacement
+    TimeRange(1.0, 2.0), 
+    AllSpins()
+  ),
+)
+p = plot_phantom_map(obj, :T1; height=500)
+savefig(p, "KomaMRI_files/figures/brain.html")
+nothing
+```
+<iframe src="KomaMRI_files/figures/brain.html" width="100%" height="520px"></iframe>
+
+:::
+:::
+
+## Uniformly-sampled `Path`'s
+
+::: {.columns}
+::: {.column width="40%"}
+```julia
+using Random
+rng = MersenneTwister(1234)
+dx = cumsum(randn(rng, Nspins, Nt - 1); dims=2)
+dy = cumsum(randn(rng, Nspins, Nt - 1); dims=2)
+dz = cumsum(randn(rng, Nspins, Nt - 1); dims=2)
+random_walk = Path(
+  dx, 
+  dy, 
+  dz, 
+  TimeRange(0.0, T)
+)
+obj.motion = MotionList(
+  random_walk
+)
+```
+:::
+::: {.column width="60%"}
+```{julia}
+using Random
+Nspins = 1_000
+obj = Phantom(;
+    x  = zeros(Nspins),
+    T1 = ones(Nspins) * 1000e-3,
+    T2 = ones(Nspins) * 100e-3,
+)
+D = 2e-9               # Diffusion Coefficient of water in m^2/s
+T = 100e-3             # Duration of the motion
+Nt = 100               # Number of time steps
+Δt = T / (Nt - 1)      # Time sep
+Δr = sqrt(2 * D * Δt)  # √ Mean square displacement
+rng = MersenneTwister(1234) # Setting up the random seed
+dx = cumsum([zeros(Nspins) Δr .* randn(rng, Nspins, Nt - 1)]; dims=2)
+dy = cumsum([zeros(Nspins) Δr .* randn(rng, Nspins, Nt - 1)]; dims=2)
+dz = cumsum([zeros(Nspins) Δr .* randn(rng, Nspins, Nt - 1)]; dims=2)
+random_walk = Path(dx, dy, dz, TimeRange(0.0, T))
+obj.motion = MotionList(random_walk)
+p = plot_phantom_map(obj, :T1; time_samples=Nt÷4, height=500)
+savefig(p, "KomaMRI_files/figures/random_walk.html")
+nothing
+```
+<iframe src="KomaMRI_files/figures/random_walk.html" width="100%" height="520px"></iframe>
+:::
+:::
+
+## `FlowPath` can use CFD-generated particle trajectories
+
+![](KomaMRI_files/figures/FlowCFD.png){fig-align="center"}
+
+- 5 million spins
+- GPU NVIDIA Quadro RTX 4000 8 GB
+
+## Faster simulations than CMRsim [@weine_cmrsim_2024]
+
+KomaMRI 9 min vs CMRsim 39 min:
+
+![](KomaMRI_files/figures/CMRsimComparison.png){fig-align="center"}
+
+## Distributed flow simulations across multiple GPUs 
+![](KomaMRI_files/figures/ParallelGPUCardiac.png){fig-align="center"}
+
+- 7 million spins
+- 4 x NVIDIA RTX A5000 24 GB
+
+## So you can do a lot more stuff!
+![](KomaMRI_files/figures/CMROpenSourceFig2.svg){fig-align="center"}
+
+# What's next?
+
+## Parallel imaging (Martín Stockle)
+![](KomaMRI_files/figures/MultipleCoils.png){fig-align="center"}
+
+## We have a PR that implements it
+
+![](KomaMRI_files/figures/ParallelImagingKoma.png){fig-align="center"}
+
+## Enzyme AD (Kareem Fareed)
+
+![](KomaMRI_files/figures/KomaEnzyme.png)
+
+## There is a long way to go ...
+
+![](KomaMRI_files/figures/ADMRM.png)
+
+![](KomaMRI_files/figures/ADSoT.png)
+
+<!-- CONCLUSIONS -->
+# Conclusions
+## KomaMRI.jl has a growing community
+
+:::{.columns}
+::: {.column width="50%"}
+- Statistics:
+
+<center>
+![](https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FKomaMRI&query=total_requests&label=Downloads){height=30px}
+![](https://img.shields.io/github/stars/JuliaHealth/KomaMRI.jl?style=flat&label=Stars&color=blue){height=30px}
+</center>
+
+![](KomaMRI_files/figures/KomaStars.png)
+
+:::
+::: {.column width="50%"}
+![](KomaMRI_files/figures/KomaWorldwide.png)
+
+- 17 Collaborators:
+
+![](https://contrib.rocks/image?repo=JuliaHealth/KomaMRI.jl){height=70px}
+</a>
+
+:::
+:::
+
+## Propaganda
+
+Show support by starring **KomaMRI.jl** on GitHub ⭐!
+<center>
+{{< qrcode https://github.com/JuliaHealth/KomaMRI.jl width="300" height="300">}}
+</center>
+
+Join JuliaHealth: `#health-and-medicine` on the Julia Slack.
+
+
+## Acknowledgements {.smaller}
+:::{.columns}
+::: {.column width="40%"}
+- Pablo Irarrázaval (UC)
+- René Botnar (KCL/UC)
+- Claudia Prieto (KCL/UC)
+- Jacob Zelko (JuliaHealth)
+- Ryan Kierulf (GSoC)
+- Boris Orostica (iHEALTH, UC)
+- Martín Stockle (iHEALTH, UC)
+- Kareem Fareed (REU, Stanford)
+- Dilum Aluthge (Julia)
+- Tim Besard (Julia)
+- and many more!
+:::
+::: {.column width="60%"}
+
+![](KomaMRI_files/figures/EnnisLab.png)
+
+1. American Physical Society DCOMP Travel Award
+2. Google Summer of Code 2024
+4. NIH R01 HL131823
+5. NIH R01 HL152256
+:::
+:::
+
+<!-- REFERENCES -->
+## References {.scrollable}
+::: {#refs}
+:::

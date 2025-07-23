@@ -1,0 +1,30 @@
+Outline:
+- Introduction to MRI simulation
+  - Why simulate? patient confidentiality, cost-effectiveness, ...
+  - Bloch equation: Differential equation
+  - Simulating MRI is solving the Bloch equation for each pixel
+  - Sequences
+  - Pulseq: Open source sequence definition
+  - Examples:
+    - Cardiac Low field MRI
+    - Quantitative MRI
+- What is new?
+  - Package separation: Improved modularity and maintainability
+  - GPU agnostic simulations using Kernel Abstractions
+    - Improved simulation speed
+    - Buildkite CI
+    - Compatibility (table)
+  - Flow simulations for cardiac MRI
+    - Composable models
+    - CINE
+    - Flow
+  - Documentation
+    - Tutorials
+  - Community
+    - Plots for starts (X times more that 2023)
+    - World map
+    - OSI2
+    - Top viewed paper MRM
+- Future work
+  - Parallel imaging
+  - Automatic differentiation
